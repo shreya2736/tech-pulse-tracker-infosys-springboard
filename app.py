@@ -414,12 +414,18 @@ def render_sidebar(df: pd.DataFrame):
 
     st.sidebar.divider()
 
-    # Refresh button — label depends on whether data already exists
-    has_data = os.path.exists(SENTIMENT_RESULTS_PATH)
-    btn_label = "🔄 Update Data" if has_data else "🚀 Collect & Analyze"
-    if st.sidebar.button(btn_label, use_container_width=True, type="primary"):
-        st.session_state["refresh"] = True
-        st.rerun()
+    if supabase_configured():
+        st.sidebar.info(
+            "🔄 Data refreshes automatically every 6 hours via GitHub Actions. "
+            "No manual update needed."
+        )
+    else:
+        # Refresh button — label depends on whether data already exists
+        has_data = os.path.exists(SENTIMENT_RESULTS_PATH)
+        btn_label = "🔄 Update Data" if has_data else "🚀 Collect & Analyze"
+        if st.sidebar.button(btn_label, use_container_width=True, type="primary"):
+            st.session_state["refresh"] = True
+            st.rerun()
 
     st.sidebar.divider()
 
