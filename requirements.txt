@@ -1,0 +1,47 @@
+# ============================================================
+# Tech Industry Pulse Tracker — Requirements
+# Install with: pip install -r requirements.txt
+# ============================================================
+
+# Dashboard
+streamlit>=1.32.0
+
+# Data handling
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Data collection
+requests>=2.31.0
+feedparser>=6.0.10
+praw>=7.7.1
+
+# Market data (NASDAQ overlay)
+yfinance>=0.2.36
+
+# NLP and sentiment
+transformers>=4.38.0
+torch>=2.1.0
+# torch installs CPU version by default — sufficient for this project
+
+# Keyword extraction
+yake>=0.4.8
+
+# Forecasting
+prophet>=1.1.5
+
+# Language detection
+langdetect>=1.0.9
+
+# Visualization
+plotly>=5.18.0
+
+# Scheduling
+APScheduler>=3.10.4
+
+# Environment variables
+python-dotenv>=1.0.1
+
+# Utilities
+scikit-learn>=1.3.0
+# Supabase — cloud storage for deployed dashboard
+supabase>=2.3.0

@@ -1,0 +1,85 @@
+# .github/workflows/pipeline.yml
+# ============================================================
+# Tech Pulse Tracker — Automated Pipeline
+# ============================================================
+# Runs the full pipeline every 6 hours on GitHub's servers.
+# Uploads the 3 result CSVs to Supabase Storage after each run.
+# Your Streamlit Cloud dashboard reads from Supabase — so it
+# always shows fresh data even when your laptop is off.
+#
+# Setup steps (one time only):
+#   1. Push this repo to GitHub
+#   2. Create a Supabase project at https://supabase.com (free)
+#   3. Create a storage bucket called "techpulse" in Supabase
+#   4. Add these secrets in GitHub → Settings → Secrets → Actions:
+#        NEWS_API_KEY         your NewsAPI key
+#        SUPABASE_URL         from Supabase project settings
+#        SUPABASE_KEY         the "anon public" key from Supabase
+#   5. That's it — GitHub runs this automatically every 6 hours
+
+name: Tech Pulse Pipeline
+
+on:
+  schedule:
+    # Runs at 00:00, 06:00, 12:00, 18:00 UTC every day
+    - cron: "0 */6 * * *"
+
+  # Lets you trigger a manual run from GitHub → Actions tab
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30       # kill if something hangs
+
+    steps:
+      # ── 1. Check out your code ──────────────────────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Python ────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ── 3. Cache pip packages ───────────────────────────
+      # Saves ~3 min on every run after the first one
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-
+
+      # ── 4. Cache HuggingFace model (~500MB) ─────────────
+      # Without this, RoBERTa re-downloads every run (slow + wasteful)
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-roberta-sentiment-v1
+          restore-keys: hf-roberta-
+
+      # ── 5. Install dependencies ──────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── 6. Create .env from GitHub secrets ──────────────
+      # GitHub secrets are injected as environment variables
+      - name: Create .env file
+        run: |
+          echo "NEWS_API_KEY=${{ secrets.NEWS_API_KEY }}" >> .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
+
+      # ── 7. Run the full pipeline ─────────────────────────
+      - name: Run pipeline
+        run: python main.py full
+
+      # ── 8. Upload CSVs to Supabase ───────────────────────
+      - name: Upload results to Supabase
+        run: python upload_to_supabase.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
