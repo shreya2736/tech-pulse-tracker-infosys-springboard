@@ -823,96 +823,99 @@ def tab_trends(df: pd.DataFrame, date_range, sector: str):
             import numpy as np
 
             # Use last 30 days (or all available)
-            pred_data = pred_stock.tail(30).copy().reset_index(drop=True)
-            X = np.arange(len(pred_data)).reshape(-1, 1)
-            y = pred_data["close"].values
+            pred_data = pred_stock.tail(30).copy()
+            pred_data = pred_data.dropna(subset=["close"]).reset_index(drop=True)
+            if len(pred_data) < 5:
+                st.info("Not enough clean stock data to make a prediction.")
+            else:
+                X = np.arange(len(pred_data)).reshape(-1, 1)
+                y = pred_data["close"].values
+                model = LinearRegression()
+                model.fit(X, y)
 
-            model = LinearRegression()
-            model.fit(X, y)
+                # Predict next trading day
+                next_x = np.array([[len(pred_data)]])
+                next_price = model.predict(next_x)[0]
 
-            # Predict next trading day
-            next_x = np.array([[len(pred_data)]])
-            next_price = model.predict(next_x)[0]
+                # Residual std for confidence interval
+                residuals = y - model.predict(X).flatten()
+                std_err = residuals.std()
 
-            # Residual std for confidence interval
-            residuals = y - model.predict(X).flatten()
-            std_err = residuals.std()
+                last_price  = pred_data["close"].iloc[-1]
+                last_date   = pd.to_datetime(pred_data["date"].iloc[-1])
+                next_date   = last_date + timedelta(days=1)
+                # Skip weekends
+                while next_date.weekday() >= 5:
+                    next_date += timedelta(days=1)
 
-            last_price  = pred_data["close"].iloc[-1]
-            last_date   = pd.to_datetime(pred_data["date"].iloc[-1])
-            next_date   = last_date + timedelta(days=1)
-            # Skip weekends
-            while next_date.weekday() >= 5:
-                next_date += timedelta(days=1)
+                price_change   = next_price - last_price
+                pct_chg        = price_change / last_price * 100
+                direction      = "📈 Up" if price_change > 0 else "📉 Down"
+                direction_color = "#28a745" if price_change > 0 else "#dc3545"
 
-            price_change   = next_price - last_price
-            pct_chg        = price_change / last_price * 100
-            direction      = "📈 Up" if price_change > 0 else "📉 Down"
-            direction_color = "#28a745" if price_change > 0 else "#dc3545"
+                # Current sector sentiment (latest available)
+                today_sentiment = None
+                if not fdf.empty and pred_sector in fdf["sector"].values:
+                    today_sentiment = fdf[fdf["sector"] == pred_sector]["sentiment_score"].tail(20).mean()
 
-            # Current sector sentiment (latest available)
-            today_sentiment = None
-            if not fdf.empty and pred_sector in fdf["sector"].values:
-                today_sentiment = fdf[fdf["sector"] == pred_sector]["sentiment_score"].tail(20).mean()
+                pc1, pc2, pc3, pc4 = st.columns(4)
+                pc1.metric("Last Close",        f"${last_price:.2f}",  f"{last_date.strftime('%b %d')}")
+                pc2.metric("Predicted Price",   f"${next_price:.2f}",  f"{pct_chg:+.2f}%",
+                        delta_color="normal" if price_change > 0 else "inverse")
+                pc3.metric("Confidence Range",
+                        f"${next_price - std_err:.2f} – ${next_price + std_err:.2f}",
+                        "±1 std dev")
+                pc4.metric("Direction Signal",  direction,
+                        f"Sentiment: {today_sentiment:+.3f}" if today_sentiment is not None else "—")
 
-            pc1, pc2, pc3, pc4 = st.columns(4)
-            pc1.metric("Last Close",        f"${last_price:.2f}",  f"{last_date.strftime('%b %d')}")
-            pc2.metric("Predicted Price",   f"${next_price:.2f}",  f"{pct_chg:+.2f}%",
-                       delta_color="normal" if price_change > 0 else "inverse")
-            pc3.metric("Confidence Range",
-                       f"${next_price - std_err:.2f} – ${next_price + std_err:.2f}",
-                       "±1 std dev")
-            pc4.metric("Direction Signal",  direction,
-                       f"Sentiment: {today_sentiment:+.3f}" if today_sentiment is not None else "—")
-
-            # Mini prediction chart
-            fig_pred = go.Figure()
-            fig_pred.add_trace(go.Scatter(
-                x=pred_data["date"].astype(str), y=pred_data["close"],
-                mode="lines+markers", name="Historical Close",
-                line=dict(color="#1f77b4", width=2), marker=dict(size=4),
-            ))
-            # Trend line
-            trend_y = model.predict(X).flatten()
-            fig_pred.add_trace(go.Scatter(
-                x=pred_data["date"].astype(str), y=trend_y,
-                mode="lines", name="Trend",
-                line=dict(color="#aaa", width=1, dash="dot"),
-            ))
-            # Prediction point
-            fig_pred.add_trace(go.Scatter(
-                x=[next_date.strftime("%Y-%m-%d")], y=[next_price],
-                mode="markers", name=f"Predicted ({next_date.strftime('%b %d')})",
-                marker=dict(size=14, color=direction_color, symbol="star"),
-                error_y=dict(type="data", array=[std_err], visible=True, color=direction_color),
-            ))
-            fig_pred.update_layout(
-                **CHART_LAYOUT, height=320,
-                yaxis_title="Price (USD)",
-                legend=dict(orientation="h", y=1.08),
-            )
-            st.plotly_chart(fig_pred, use_container_width=True, key="trends_stock_prediction")
-            chart_caption(
-                f"The star (⭐) marks the predicted closing price for {pred_ticker_name} ({pred_ticker}) "
-                f"on {next_date.strftime('%A, %b %d')}. "
-                "The prediction is based on a linear trend fitted to the last 30 trading days of closing prices. "
-                "The error bar shows ±1 standard deviation of recent residuals — the wider it is, the more volatile the stock has been. "
-                "⚠️ This is a statistical estimate, not financial advice. Always consider broader market conditions."
-            )
+                # Mini prediction chart
+                fig_pred = go.Figure()
+                fig_pred.add_trace(go.Scatter(
+                    x=pred_data["date"].astype(str), y=pred_data["close"],
+                    mode="lines+markers", name="Historical Close",
+                    line=dict(color="#1f77b4", width=2), marker=dict(size=4),
+                ))
+                # Trend line
+                trend_y = model.predict(X).flatten()
+                fig_pred.add_trace(go.Scatter(
+                    x=pred_data["date"].astype(str), y=trend_y,
+                    mode="lines", name="Trend",
+                    line=dict(color="#aaa", width=1, dash="dot"),
+                ))
+                # Prediction point
+                fig_pred.add_trace(go.Scatter(
+                    x=[next_date.strftime("%Y-%m-%d")], y=[next_price],
+                    mode="markers", name=f"Predicted ({next_date.strftime('%b %d')})",
+                    marker=dict(size=14, color=direction_color, symbol="star"),
+                    error_y=dict(type="data", array=[std_err], visible=True, color=direction_color),
+                ))
+                fig_pred.update_layout(
+                    **CHART_LAYOUT, height=320,
+                    yaxis_title="Price (USD)",
+                    legend=dict(orientation="h", y=1.08),
+                )
+                st.plotly_chart(fig_pred, use_container_width=True, key="trends_stock_prediction")
+                chart_caption(
+                    f"The star (⭐) marks the predicted closing price for {pred_ticker_name} ({pred_ticker}) "
+                    f"on {next_date.strftime('%A, %b %d')}. "
+                    "The prediction is based on a linear trend fitted to the last 30 trading days of closing prices. "
+                    "The error bar shows ±1 standard deviation of recent residuals — the wider it is, the more volatile the stock has been. "
+                    "⚠️ This is a statistical estimate, not financial advice. Always consider broader market conditions."
+                )
 
         except Exception as e:
             st.warning(f"Prediction unavailable: {e}")
 
-    st.info(
-        "**Model: Ordinary Least Squares Linear Regression (scikit-learn)**\n\n"
-        "Fits a straight trend line through the last 30 days of closing prices and extends it one trading day forward. "
-        "It captures the overall price direction (uptrend or downtrend) but assumes the trend continues linearly — "
-        "it does not account for earnings releases, macro events, or sudden volatility. "
-        "The confidence range (±1 std dev) widens when recent prices have been erratic. "
-        "Use this as a directional signal only, not a precise price target. "
-        "For real trading decisions, combine with fundamental analysis and broader market context."
-    )
-    st.divider()
+        st.info(
+            "**Model: Ordinary Least Squares Linear Regression (scikit-learn)**\n\n"
+            "Fits a straight trend line through the last 30 days of closing prices and extends it one trading day forward. "
+            "It captures the overall price direction (uptrend or downtrend) but assumes the trend continues linearly — "
+            "it does not account for earnings releases, macro events, or sudden volatility. "
+            "The confidence range (±1 std dev) widens when recent prices have been erratic. "
+            "Use this as a directional signal only, not a precise price target. "
+            "For real trading decisions, combine with fundamental analysis and broader market context."
+        )
+        st.divider()
 
     # ── Trending keywords treemap ──────────────────────────
     st.subheader("🔑 Trending Keywords")
