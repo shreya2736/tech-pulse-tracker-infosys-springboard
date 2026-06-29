@@ -6,13 +6,13 @@
 
 ---
 
-## 📌 What It Does
+##  What It Does
 
 Tech Pulse Tracker automatically collects tech news from multiple sources, runs NLP sentiment analysis on every article, forecasts sentiment trends for the next 7 days, and visualizes everything in an interactive dashboard — updated every 6 hours automatically via GitHub Actions.
 
 ---
 
-## 🖥️ Dashboard Preview
+##  Dashboard Preview
 
 | Tab | What You See |
 |-----|-------------|
@@ -23,7 +23,7 @@ Tech Pulse Tracker automatically collects tech news from multiple sources, runs 
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 News Sources          Pipeline                    Storage          Dashboard
@@ -39,7 +39,7 @@ Google News RSS   →
 
 ---
 
-## 🧠 Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -56,7 +56,7 @@ Google News RSS   →
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```
 tech_pulse_tracker/
@@ -84,7 +84,7 @@ tech_pulse_tracker/
 
 ---
 
-## ⚙️ How It Works
+##  How It Works
 
 ### 1. Data Collection
 Every 6 hours GitHub Actions triggers the pipeline. Articles are fetched from:
@@ -115,7 +115,7 @@ Results are uploaded to **Supabase Storage** as CSVs. The Streamlit Cloud dashbo
 
 ---
 
-## 🚀 Local Setup
+##  Local Setup
 
 ### Prerequisites
 - Python 3.10+
@@ -166,7 +166,7 @@ On first run the dashboard shows a landing page with a **"🚀 Collect Data & La
 
 ---
 
-## ☁️ Deployment
+##  Deployment
 
 The app is deployed using a **split architecture** to handle the heavy ML pipeline:
 
@@ -188,7 +188,7 @@ This means the Streamlit server never runs the heavy ML model — it only reads 
 
 ---
 
-## 📊 Sectors Tracked
+##  Sectors Tracked
 
 | Sector | Key Terms |
 |--------|----------|
@@ -201,7 +201,7 @@ This means the Streamlit server never runs the heavy ML model — it only reads 
 
 ---
 
-## 📈 Tracked Stocks
+##  Tracked Stocks
 
 | Sector | Ticker | Index |
 |--------|--------|-------|
@@ -213,7 +213,7 @@ This means the Streamlit server never runs the heavy ML model — it only reads 
 
 ---
 
-## ⚠️ Disclaimers
+##  Disclaimers
 
 - **Not financial advice.** Stock price predictions use simple linear regression on 30 days of historical prices. Do not use for real trading decisions.
 - **Sentiment is news-based**, not a reflection of actual company performance or stock fundamentals.
@@ -221,6 +221,6 @@ This means the Streamlit server never runs the heavy ML model — it only reads 
 
 ---
 
-## 📄 License
+##  License
 
 MIT License — free to use, modify, and distribute.
