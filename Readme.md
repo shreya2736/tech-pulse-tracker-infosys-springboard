@@ -12,6 +12,7 @@ Tech Pulse Tracker automatically collects tech news from multiple sources, runs 
 
 ---
 
+
 ##  Dashboard Preview
 
 | Tab | What You See |
