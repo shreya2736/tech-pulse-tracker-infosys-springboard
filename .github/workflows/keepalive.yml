@@ -2,14 +2,20 @@ name: Keep Alive
 
 on:
   schedule:
-    - cron: "0 0 * * 0"  # runs every Sunday at midnight
+    - cron: "0 0 * * 0"  # runs every Sunday at midnight UTC
   workflow_dispatch:
+
+permissions:
+  contents: write   # needed to push the empty commit back to the repo
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # uses built-in token to authenticate push
+
       - name: Keep workflows alive
         run: |
           git config user.email "action@github.com"
