@@ -8,6 +8,7 @@
 import os
 import sys
 from supabase import create_client
+import time
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
@@ -38,20 +39,23 @@ def upload():
         with open(path, "rb") as f:
             data = f.read()
 
-        try:
-            # upsert=True overwrites if the file already exists
-            client.storage.from_(BUCKET).upload(
-                path=filename,
-                file=data,
-                file_options={"upsert": "true"},
-            )
-            size_kb = len(data) // 1024
-            print(f"  ✅ {filename} ({size_kb} KB)")
-        except Exception as e:
-            print(f"  ❌ Failed to upload {filename}: {e}")
-            sys.exit(1)
+            for attempt in range(3):         # try up to 3 times
+                try:
+                    client.storage.from_(BUCKET).upload(
+                        path=filename,
+                        file=data,
+                        file_options={"upsert": "true"},
+                    )
+                    break                     # success — stop retrying
+                except Exception as e:
+                    if attempt < 2:
+                        print(f"  ⚠️ Attempt {attempt+1} failed: {e} — retrying in 5s")
+                        time.sleep(5)
+                    else:
+                        print(f"  ❌ Failed to upload {filename} after 3 attempts: {e}")
+                        sys.exit(1)
 
-    print("\n✅ All files uploaded to Supabase\n")
+        print("\n✅ All files uploaded to Supabase\n")
 
 
 if __name__ == "__main__":
